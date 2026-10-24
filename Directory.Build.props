@@ -1,0 +1,33 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <!--
+    Package metadata. Only the plugin is published; it imports build/PluginPackage.targets, which
+    makes it packable. The libraries it carries are packed inside it.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <Authors>LANCommander</Authors>
+    <Company>LANCommander</Company>
+    <Copyright>Copyright (c) LANCommander</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/LANCommander/LANCommander.Plugins.Relay</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/LANCommander/LANCommander.Plugins.Relay</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageIcon>package-icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <!--
+    LANCommander.Interposer.Relay is not on nuget.org yet. Packing it from an Interposer checkout
+    into artifacts/packages makes it restorable without any further setup; see the README.
+  -->
+  <PropertyGroup Condition="Exists('$(MSBuildThisFileDirectory)artifacts\packages')">
+    <RestoreAdditionalProjectSources>$(RestoreAdditionalProjectSources);$(MSBuildThisFileDirectory)artifacts\packages</RestoreAdditionalProjectSources>
+  </PropertyGroup>
+</Project>

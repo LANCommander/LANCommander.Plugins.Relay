@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/Configuration/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/LANCommander.Plugins.Relay/LANCommander.Plugins.Relay.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LANCommander.Plugins.Relay.Tests/LANCommander.Plugins.Relay.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,34 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!--
+      The LANCommander server the plugin is built for. Its packages are released together under
+      the server's version; 2.2.0-alpha.2 is the first release that publishes Server.Plugins. To
+      build against an unreleased server, pack its SDK, Server.Plugins and Server.UI projects into
+      a folder and pass -p:LANCommanderVersion=<version> -p:RestoreAdditionalProjectSources=<folder>.
+    -->
+    <LANCommanderVersion Condition="'$(LANCommanderVersion)' == ''">2.2.0-alpha.2</LANCommanderVersion>
+    <!--
+      The relay server library, from the LANCommander.Interposer repository, released with the
+      Interposer under the same version. To build against an unreleased one, pack it into
+      artifacts/packages and pass -p:InterposerRelayVersion=<version>; see the README.
+    -->
+    <InterposerRelayVersion Condition="'$(InterposerRelayVersion)' == ''">1.3.0</InterposerRelayVersion>
+  </PropertyGroup>
+  <ItemGroup Label="Host">
+    <PackageVersion Include="LANCommander.SDK" Version="$(LANCommanderVersion)" />
+    <PackageVersion Include="LANCommander.Server.Plugins" Version="$(LANCommanderVersion)" />
+    <PackageVersion Include="LANCommander.Server.UI" Version="$(LANCommanderVersion)" />
+  </ItemGroup>
+  <ItemGroup Label="Runtime">
+    <PackageVersion Include="LANCommander.Interposer.Relay" Version="$(InterposerRelayVersion)" />
+  </ItemGroup>
+  <ItemGroup Label="Testing">
+    <PackageVersion Include="bunit" Version="2.9.0" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.1" />
+  </ItemGroup>
+</Project>

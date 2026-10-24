@@ -1,0 +1,343 @@
+@page "/Plugins/Relay"
+@implements IDisposable
+@inject RelayHost Host
+@inject RelaySettingsStore Store
+@inject RelayActivityLog Activity
+@inject TimeProvider Time
+@inject NavigationManager Navigation
+@inject NotificationService Notifications
+
+<PageHeader Title="Relay" Subtitle="Lets players on different networks play LAN games together through this server">
+    <Extra>
+        <Tag Success="@(Host.State == RelayHostState.Running)" Danger="@(Host.State == RelayHostState.Faulted)">@StateLabel</Tag>
+        @if (Store.Current.Enabled)
+        {
+            <Popconfirm OnConfirm="RestartAsync" Title="Restart the relay?" Description="Connected players are dropped, and their games reconnect by themselves." OkText="Restart">
+                <Button Icon="IconType.ArrowClockwise" Loading="_restarting">Restart</Button>
+            </Popconfirm>
+        }
+    </Extra>
+</PageHeader>
+
+<PageContent>
+    <Tabs>
+        <Tab Title="Overview" Icon="IconType.Pulse">
+            <Flex Vertical Gap="Gap.Large">
+                @if (Host.State == RelayHostState.Faulted)
+                {
+                    <Alert Danger Title="The relay could not start">@Host.Error</Alert>
+                }
+                else if (Host.State == RelayHostState.Stopped)
+                {
+                    <Alert Info>The relay is turned off. Turn it on under Settings.</Alert>
+                }
+
+                <Flex Gap="Gap.Large" Wrap>
+                    <Statistic Title="Uptime" Value="@(Host.StartedOn is { } started ? RelayFormat.Duration(Time.GetUtcNow() - started) : "—")" />
+                    <Statistic Title="Players connected" Value="@_clients.Count.ToString(CultureInfo.CurrentCulture)" />
+                    <Statistic Title="Networks" Value="@_networkCount.ToString(CultureInfo.CurrentCulture)" />
+                    <Statistic Title="Peak players" Value="@_statistics.PeakClients.ToString(CultureInfo.CurrentCulture)" />
+                    <Statistic Title="Sessions" Value="@_statistics.Sessions.ToString(CultureInfo.CurrentCulture)" />
+                    <Statistic Title="Refused" Value="@_statistics.Refused.ToString(CultureInfo.CurrentCulture)" Warning="@(_statistics.Refused > 0)" />
+                    <Statistic Title="Received" Value="@RelayFormat.Bytes(_statistics.BytesReceived)" />
+                    <Statistic Title="Sent" Value="@RelayFormat.Bytes(_statistics.BytesSent)" />
+                </Flex>
+
+                <Card Title="Connected players" Count="_clients.Count">
+                    <Table TItem="RelayClientInfo" Items="_clients" Key="client => client.ClientId" NoPaging Small EmptyText="Nobody is connected" SettingsKey="plugin-relay-clients">
+                        <Columns>
+                            <TemplateColumn TItem="RelayClientInfo" Title="Player">
+                                <Flex Vertical Gap="Gap.None">
+                                    <Typography Strong>@context.PlayerName</Typography>
+                                    @if (context.State is RelayUser user)
+                                    {
+                                        <Typography Secondary Small>Signed in as @user.UserName</Typography>
+                                    }
+                                    else
+                                    {
+                                        <Typography Secondary Small>Not signed in</Typography>
+                                    }
+                                </Flex>
+                            </TemplateColumn>
+                            <TemplateColumn TItem="RelayClientInfo" Title="Network">
+                                @if (Host.GetNetworkLabel(context.Network) is { } label)
+                                {
+                                    <Flex Vertical Gap="Gap.None">
+                                        <span>@label</span>
+                                        <Typography Secondary Small Code>@context.Network</Typography>
+                                    </Flex>
+                                }
+                                else
+                                {
+                                    <Typography Code>@context.Network</Typography>
+                                }
+                            </TemplateColumn>
+                            <TemplateColumn TItem="RelayClientInfo" Title="Address">
+                                <Flex Vertical Gap="Gap.None">
+                                    <span>@context.VirtualAddress</span>
+                                    <Typography Secondary Small>from @context.RemoteEndPoint</Typography>
+                                </Flex>
+                            </TemplateColumn>
+                            <TemplateColumn TItem="RelayClientInfo" Title="Path" Width="90px">
+                                <Tag Small Info="@context.UdpActive">@(context.UdpActive ? "UDP" : "TCP")</Tag>
+                            </TemplateColumn>
+                            <TemplateColumn TItem="RelayClientInfo" Title="Traffic">
+                                <Typography Small>↓ @RelayFormat.Bytes(context.BytesReceived) · ↑ @RelayFormat.Bytes(context.BytesSent)</Typography>
+                                @if (context.StreamsOpen > 0)
+                                {
+                                    <Typography Secondary Small> · @context.StreamsOpen TCP @(context.StreamsOpen == 1 ? "stream" : "streams")</Typography>
+                                }
+                            </TemplateColumn>
+                            <TemplateColumn TItem="RelayClientInfo" Title="Connected" Width="120px">
+                                @RelayFormat.Duration(Time.GetUtcNow() - context.ConnectedAt)
+                            </TemplateColumn>
+                            <ActionsColumn TItem="RelayClientInfo">
+                                <Popconfirm OnConfirm="() => Disconnect(context)" Title="@($"Disconnect {context.PlayerName}?")" Description="Their game reconnects by itself unless they have quit." OkText="Disconnect" Danger>
+                                    <Button Text Small Danger Icon="IconType.PlugsConnected" title="Disconnect" />
+                                </Popconfirm>
+                            </ActionsColumn>
+                        </Columns>
+                    </Table>
+                </Card>
+
+                <Card Title="Activity" Subtitle="@($"The latest {RelayActivityLog.Capacity} events since the server started")">
+                    <Extra>
+                        <Button Text Small Icon="IconType.Trash" OnClick="() => Activity.Clear()" Disabled="_activity.Count == 0">Clear</Button>
+                    </Extra>
+                    <ChildContent>
+                        <Table TItem="RelayActivity" Items="_activity" Small PageSize="25" EmptyText="Nothing has happened yet" SettingsKey="plugin-relay-activity">
+                            <Columns>
+                                <TemplateColumn TItem="RelayActivity" Title="Time" Width="200px">
+                                    <LocalTime Value="context.Timestamp.UtcDateTime" />
+                                </TemplateColumn>
+                                <TemplateColumn TItem="RelayActivity" Title="Level" Width="100px">
+                                    <Tag Small Warning="@(context.Level == LogLevel.Warning)" Danger="@(context.Level >= LogLevel.Error)">@LevelLabel(context.Level)</Tag>
+                                </TemplateColumn>
+                                <TemplateColumn TItem="RelayActivity" Title="Event">
+                                    @context.Message
+                                </TemplateColumn>
+                            </Columns>
+                        </Table>
+                    </ChildContent>
+                </Card>
+            </Flex>
+        </Tab>
+
+        <Tab Title="Settings" Icon="IconType.Gear">
+            <Flex Vertical Gap="Gap.Large">
+                <Form Model="_model" OnSubmit="SaveAsync" Loading="_saving">
+                    <FormItem Label="Enabled" Help="Run the relay. Saving restarts it, dropping connected players; their games reconnect by themselves.">
+                        <Switch @bind-Value="_model.Enabled" />
+                    </FormItem>
+
+                    <FormItem Label="Port" Help="@($"Games connect to this TCP port, and send game traffic to the same UDP port. Open both in the firewall, and forward them if players connect from outside your network. The Interposer uses {RelayPluginSettings.DefaultPort} unless a game's config says otherwise.")">
+                        <NumberInput TValue="int" @bind-Value="_model.Port" Min="1" Max="65535" />
+                    </FormItem>
+
+                    <FormItem Label="Use UDP" Help="Carry game datagrams over UDP once it gets through, which is faster. Turn off if the UDP port cannot be opened; everything then travels over TCP.">
+                        <Switch @bind-Value="_model.Udp" />
+                    </FormItem>
+
+                    <FormItem Label="Require sign-in" Help="Only let in games the LANCommander launcher started for a signed-in player. Each gets a ticket from this server that admits it to its own game's network for a day. Off also lets in anyone who can reach the port, into whatever network they name.">
+                        <Switch @bind-Value="_model.RequireAuthentication" />
+                    </FormItem>
+
+                    <FormItem Label="Players per network" Help="The most players one relay network may hold.">
+                        <NumberInput TValue="int" @bind-Value="_model.MaxClientsPerNetwork" Min="2" Max="254" />
+                    </FormItem>
+
+                    <FormItem Label="Public address" Help="The host name or address games connect to the relay at. Leave empty to use the one the launcher reaches this server at; set it when that differs, for example behind a reverse proxy that only carries HTTP.">
+                        <TextInput @bind-Value="_model.PublicHost" Placeholder="@DefaultHost" />
+                    </FormItem>
+
+                    <FormItem>
+                        <Button Primary Submit>Save</Button>
+                    </FormItem>
+                </Form>
+
+                <Card Title="Connecting games">
+                    <Flex Vertical Gap="Gap.Medium">
+                        <Typography>
+                            The LANCommander launcher on Windows connects games by itself. When a player starts a game with a LAN multiplayer mode over TCP/IP or IPX, it asks this server for a ticket and starts the game under the Interposer, joined to that game's network. Everyone playing the same game sees each other's sessions as if they shared a LAN. Players can turn this off in the launcher's settings.
+                        </Typography>
+                        <Typography>
+                            Games started some other way can join through the Interposer's own config, in the game's <Typography Code>.interposer\Config.yml</Typography>, as long as sign-in is not required:
+                        </Typography>
+                        <pre style="margin: 0; padding: 12px; overflow-x: auto; border-radius: 6px; background: var(--color-fill-tertiary, rgba(127, 127, 127, 0.12))">@ConfigExample</pre>
+                        <Typography Secondary Small>
+                            Game traffic, and the ticket, travel to the relay unencrypted. A ticket is only good for the relay, and only for its own game's network, so one seen on the wire cannot be used against the server.
+                        </Typography>
+                    </Flex>
+                </Card>
+            </Flex>
+        </Tab>
+    </Tabs>
+</PageContent>
+
+@code {
+    readonly SettingsModel _model = new();
+    IReadOnlyList<RelayClientInfo> _clients = [];
+    IReadOnlyList<RelayActivity> _activity = [];
+    RelayStatistics _statistics = new(0, 0, 0, 0, 0);
+    int _networkCount;
+    bool _saving;
+    bool _restarting;
+    Timer? _timer;
+
+    string StateLabel => Host.State switch
+    {
+        RelayHostState.Running => Host.TcpEndPoint is { } endPoint ? $"Listening on {endPoint.Port}" : "Running",
+        RelayHostState.Faulted => "Failed",
+        _ => "Off",
+    };
+
+    // The host this page was reached at, which is usually the one launchers use
+    string DefaultHost => Uri.TryCreate(Navigation.BaseUri, UriKind.Absolute, out var uri) ? uri.Host : "your-server";
+
+    string ConfigExample
+    {
+        get
+        {
+            var settings = Store.Current;
+            var host = settings.PublicHost ?? DefaultHost;
+            var server = settings.Port == RelayPluginSettings.DefaultPort ? host : $"{host}:{settings.Port}";
+
+            return $"""
+                NetworkRelay:
+                  Enabled: true
+                  Server: '{server}'
+                  Network: 'lan-party'
+                """;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        var current = Store.Current;
+
+        _model.Enabled = current.Enabled;
+        _model.Port = current.Port;
+        _model.Udp = current.Udp;
+        _model.RequireAuthentication = current.RequireAuthentication;
+        _model.MaxClientsPerNetwork = current.MaxClientsPerNetwork;
+        _model.PublicHost = current.PublicHost;
+
+        Refresh();
+
+        Host.Changed += OnChanged;
+        Activity.Changed += OnChanged;
+
+        // Traffic counters and durations move without any event, so the page also redraws on a timer.
+        _timer = new Timer(_ => OnChanged(), null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+    }
+
+    void Refresh()
+    {
+        _clients = Host.GetClients().OrderBy(client => client.Network, StringComparer.OrdinalIgnoreCase).ThenBy(client => client.VirtualAddress.ToString()).ToArray();
+        _networkCount = _clients.Select(client => client.Network).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+        _statistics = Host.GetStatistics();
+        _activity = Activity.Entries;
+    }
+
+    async Task SaveAsync()
+    {
+        _saving = true;
+
+        try
+        {
+            var saved = Store.Save(new RelayPluginSettings
+            {
+                Enabled = _model.Enabled,
+                Port = _model.Port,
+                Udp = _model.Udp,
+                RequireAuthentication = _model.RequireAuthentication,
+                MaxClientsPerNetwork = _model.MaxClientsPerNetwork,
+                PublicHost = _model.PublicHost,
+            });
+
+            _model.Port = saved.Port;
+            _model.MaxClientsPerNetwork = saved.MaxClientsPerNetwork;
+
+            await Host.RestartAsync();
+
+            if (Host.State == RelayHostState.Faulted)
+                Notifications.Error($"Relay settings saved, but the relay could not start. {Host.Error}");
+            else
+                Notifications.Success(saved.Enabled ? $"Relay settings saved; listening on port {saved.Port}" : "Relay settings saved; the relay is off");
+        }
+        catch (Exception exception)
+        {
+            Notifications.Error(exception, "Could not save the relay settings");
+        }
+        finally
+        {
+            _saving = false;
+            Refresh();
+        }
+    }
+
+    async Task RestartAsync()
+    {
+        _restarting = true;
+
+        try
+        {
+            await Host.RestartAsync();
+
+            if (Host.State == RelayHostState.Faulted)
+                Notifications.Error($"The relay could not start. {Host.Error}");
+            else
+                Notifications.Success("Relay restarted");
+        }
+        catch (Exception exception)
+        {
+            Notifications.Error(exception, "Could not restart the relay");
+        }
+        finally
+        {
+            _restarting = false;
+            Refresh();
+        }
+    }
+
+    void Disconnect(RelayClientInfo client)
+    {
+        if (Host.Disconnect(client.ClientId))
+            Notifications.Success($"Disconnected {client.PlayerName}");
+
+        Refresh();
+    }
+
+    static string LevelLabel(LogLevel level) => level switch
+    {
+        LogLevel.Warning => "Warning",
+        LogLevel.Error or LogLevel.Critical => "Error",
+        _ => "Info",
+    };
+
+    void OnChanged()
+        => InvokeAsync(() =>
+        {
+            Refresh();
+
+            StateHasChanged();
+        });
+
+    public void Dispose()
+    {
+        Host.Changed -= OnChanged;
+        Activity.Changed -= OnChanged;
+
+        _timer?.Dispose();
+    }
+
+    sealed class SettingsModel
+    {
+        public bool Enabled { get; set; }
+        public int Port { get; set; } = RelayPluginSettings.DefaultPort;
+        public bool Udp { get; set; } = true;
+        public bool RequireAuthentication { get; set; } = true;
+        public int MaxClientsPerNetwork { get; set; } = 64;
+        public string? PublicHost { get; set; }
+    }
+}
