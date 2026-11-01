@@ -40,7 +40,7 @@ false` in the launcher's `Settings.yml`.
 **API**: `POST /api/Plugins/Relay/Sessions`, for any signed-in user, through LANCommander's plugin endpoint
 support. It returns `503` while the relay is not running.
 
-Settings and the ticket signing key are stored in `PluginData/Relay/` under the server's data directory.
+Settings and the ticket signing key are stored in the plugin's own folder, in `Plugins/LANCommander.Plugins.Relay/Data/`.
 The activity log is kept in memory (the latest 500 entries); everything also goes to the server's own log.
 
 ## Authentication
@@ -48,7 +48,7 @@ The activity log is kept in memory (the latest 500 entries); everything also goe
 With **Require sign-in** on, the relay only admits a game that presents a **relay ticket** this server
 issued. The launcher gets one per launch from the sessions endpoint, as the signed-in player. A ticket:
 
-- is signed (HMAC-SHA256) with a key only this server has, kept in `PluginData/Relay/ticket.key`. Deleting
+- is signed (HMAC-SHA256) with a key only this server has, kept in `Data/ticket.key`. Deleting
   the key and restarting the server revokes every ticket issued so far;
 - names the player's account and **one network**, the game's, and the relay puts the game there whatever
   network it asked for;
