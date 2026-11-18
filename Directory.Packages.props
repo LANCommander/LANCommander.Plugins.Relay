@@ -7,13 +7,13 @@
       build against an unreleased server, pack its SDK, Server.Plugins and Server.UI projects into
       a folder and pass -p:LANCommanderVersion=<version> -p:RestoreAdditionalProjectSources=<folder>.
     -->
-    <LANCommanderVersion Condition="'$(LANCommanderVersion)' == ''">2.2.0-alpha.2</LANCommanderVersion>
+    <LANCommanderVersion Condition="'$(LANCommanderVersion)' == ''">2.2.0-rc.2</LANCommanderVersion>
     <!--
       The relay server library, from the LANCommander.Interposer repository, released with the
       Interposer under the same version. To build against an unreleased one, pack it into
       artifacts/packages and pass -p:InterposerRelayVersion=<version>; see the README.
     -->
-    <InterposerRelayVersion Condition="'$(InterposerRelayVersion)' == ''">1.3.0</InterposerRelayVersion>
+    <InterposerRelayVersion Condition="'$(InterposerRelayVersion)' == ''">1.6.2</InterposerRelayVersion>
   </PropertyGroup>
   <ItemGroup Label="Host">
     <PackageVersion Include="LANCommander.SDK" Version="$(LANCommanderVersion)" />

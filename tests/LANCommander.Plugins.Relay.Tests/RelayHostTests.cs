@@ -194,6 +194,33 @@ public sealed class RelayHostTests : IAsyncLifetime
         Assert.Contains(Activity.Entries, entry => entry.Message == "Relay stopped");
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task PlayersAreIntroducedForDirectPathsOnlyWhenAllowed(bool direct)
+    {
+        _scratch.WriteSettings(new RelayPluginSettings { Enabled = true, Port = 0, RequireAuthentication = false, Direct = direct });
+
+        await Host.StartAsync();
+
+        await using var alice = await RelayTestClient.ConnectAsync(Host.TcpEndPoint!);
+        await using var bob = await RelayTestClient.ConnectAsync(Host.TcpEndPoint!);
+
+        await alice.HelloAsync("lan-party", null, "Alice", direct: true);
+        await bob.HelloAsync("lan-party", null, "Bob", direct: true);
+
+        alice.OpenUdp(Host.UdpEndPoint!);
+        bob.OpenUdp(Host.UdpEndPoint!);
+
+        // Once both UDP endpoints are known, each is told where the other can be reached.
+        var path = await alice.WaitForFrameAsync(RelayTestClient.PeerPath, TimeSpan.FromSeconds(direct ? 10 : 2));
+
+        if (direct)
+            Assert.NotNull(path);
+        else
+            Assert.Null(path);
+    }
+
     [Fact]
     public async Task TheHostedServiceStartsAndStopsTheRelay()
     {

@@ -147,6 +147,7 @@ public sealed class RelayHost : IAsyncDisposable, IDisposable
                 {
                     Port = settings.Port,
                     DisableUdp = !settings.Udp,
+                    AllowDirect = settings.Direct,
                     MaxClientsPerNetwork = settings.MaxClientsPerNetwork,
                 },
                 _authenticator,

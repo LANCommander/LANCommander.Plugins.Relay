@@ -29,6 +29,10 @@ false` in the launcher's `Settings.yml`.
   - **Enabled**: the relay is off until an administrator turns it on.
   - **Port**: the TCP port games connect to, and the UDP port datagrams use. Default `41300`.
   - **Use UDP**: turn off where the UDP port cannot be opened; everything then travels over TCP.
+  - **Direct connections**: introduce players in the same game to each other so their game traffic goes
+    straight between them, through the relay only when no direct path opens. Lower latency and less
+    bandwidth on the server, but each player learns the others' public IP addresses. Needs UDP. On by
+    default; players can also turn it off with `NetworkRelay.Direct: false`.
   - **Require sign-in**: see [Authentication](#authentication). On by default.
   - **Players per network**.
   - **Public address**: the host games connect to, when it is not the one the launcher reaches the server
@@ -79,3 +83,6 @@ tab and install it, or download the `.nupkg` attached to a
 - Open the relay port for **both TCP and UDP** in the server's firewall, and forward both if players
   connect from outside your network. In Docker, publish both: `-p 41300:41300/tcp -p 41300:41300/udp`.
 - Every network hands out addresses from `10.13.37.0/24`; networks are isolated from each other.
+- UDP game traffic is received and forwarded on the relay's own thread, not the server's shared
+  thread pool, so a busy or stalled server does not hold up games. Sign-ins and traffic carried over
+  TCP still share the pool.

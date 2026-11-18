@@ -138,6 +138,10 @@
                         <Switch @bind-Value="_model.Udp" />
                     </FormItem>
 
+                    <FormItem Label="Direct connections" Help="Introduce players in the same game to each other, so their game traffic goes straight between them and only passes through this server when no direct path opens. Lowers latency and the server's bandwidth, but each player learns the others' public IP addresses. Needs UDP.">
+                        <Switch @bind-Value="_model.Direct" Disabled="!_model.Udp" />
+                    </FormItem>
+
                     <FormItem Label="Require sign-in" Help="Only let in games the LANCommander launcher started for a signed-in player. Each gets a ticket from this server that admits it to its own game's network for a day. Off also lets in anyone who can reach the port, into whatever network they name.">
                         <Switch @bind-Value="_model.RequireAuthentication" />
                     </FormItem>
@@ -218,6 +222,7 @@
         _model.Enabled = current.Enabled;
         _model.Port = current.Port;
         _model.Udp = current.Udp;
+        _model.Direct = current.Direct;
         _model.RequireAuthentication = current.RequireAuthentication;
         _model.MaxClientsPerNetwork = current.MaxClientsPerNetwork;
         _model.PublicHost = current.PublicHost;
@@ -250,6 +255,7 @@
                 Enabled = _model.Enabled,
                 Port = _model.Port,
                 Udp = _model.Udp,
+                Direct = _model.Direct,
                 RequireAuthentication = _model.RequireAuthentication,
                 MaxClientsPerNetwork = _model.MaxClientsPerNetwork,
                 PublicHost = _model.PublicHost,
@@ -336,6 +342,7 @@
         public bool Enabled { get; set; }
         public int Port { get; set; } = RelayPluginSettings.DefaultPort;
         public bool Udp { get; set; } = true;
+        public bool Direct { get; set; } = true;
         public bool RequireAuthentication { get; set; } = true;
         public int MaxClientsPerNetwork { get; set; } = 64;
         public string? PublicHost { get; set; }

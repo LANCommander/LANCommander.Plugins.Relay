@@ -19,6 +19,14 @@ public sealed record RelayPluginSettings
     public bool Udp { get; init; } = true;
 
     /// <summary>
+    /// Introduce players in the same network to each other, so their games' datagrams can travel
+    /// straight between them and only go through the relay when no direct path opens. Each player
+    /// then learns the others' public addresses. Needs <see cref="Udp"/>, and a client that asks for
+    /// it (the Interposer's <c>NetworkRelay.Direct</c>, on by default).
+    /// </summary>
+    public bool Direct { get; init; } = true;
+
+    /// <summary>
     /// Only let in clients whose ticket is a valid LANCommander access token for this server.
     /// </summary>
     public bool RequireAuthentication { get; init; } = true;

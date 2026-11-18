@@ -14,6 +14,7 @@ public sealed class RelaySettingsStoreTests
         Assert.False(settings.Enabled);
         Assert.Equal(RelayPluginSettings.DefaultPort, settings.Port);
         Assert.True(settings.Udp);
+        Assert.True(settings.Direct);
         Assert.True(settings.RequireAuthentication);
     }
 
@@ -27,6 +28,7 @@ public sealed class RelaySettingsStoreTests
             Enabled = true,
             Port = 50000,
             Udp = false,
+            Direct = false,
             RequireAuthentication = false,
             MaxClientsPerNetwork = 8,
         });
@@ -38,6 +40,7 @@ public sealed class RelaySettingsStoreTests
             Enabled = true,
             Port = 50000,
             Udp = false,
+            Direct = false,
             RequireAuthentication = false,
             MaxClientsPerNetwork = 8,
         }, reloaded);
